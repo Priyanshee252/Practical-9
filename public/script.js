@@ -220,35 +220,69 @@ async function loadCategories() {
   }
 }
 
+let currentList = [];
+let page = 1;
+
+/* Sort the fetched list, cut out one page of it, and draw it with a pager. */
+function showPage(n) {
+  const size = Number(limitSelect.value);
+  const sorted = currentList.slice();
+  if (sortSelect.value === "low") sorted.sort((a, b) => a.price - b.price);
+  if (sortSelect.value === "high") sorted.sort((a, b) => b.price - a.price);
+  const pages = Math.max(1, Math.ceil(sorted.length / size));
+  page = Math.min(Math.max(1, n), pages);
+  const from = (page - 1) * size;
+  const slice = sorted.slice(from, from + size);
+  renderCards(slice);
+  resultInfo.textContent = sorted.length
+    ? `Showing ${from + 1}-${from + slice.length} of ${sorted.length} products`
+    : "No products found";
+  renderPager(pages);
+}
+
+function renderPager(pages) {
+  const pager = $("pager");
+  pager.replaceChildren();
+  if (pages <= 1) return;
+  const prev = el("button", "ghost", "Previous");
+  prev.type = "button";
+  prev.disabled = page === 1;
+  prev.addEventListener("click", () => { showPage(page - 1); window.scrollTo({ top: 0, behavior: "smooth" }); });
+  const next = el("button", "ghost", "Next");
+  next.type = "button";
+  next.disabled = page === pages;
+  next.addEventListener("click", () => { showPage(page + 1); window.scrollTo({ top: 0, behavior: "smooth" }); });
+  pager.append(prev, el("span", "pageinfo", `Page ${page} of ${pages}`), next);
+}
+
 async function loadProducts() {
-  const limit = limitSelect.value;
   const base = state.source === "public" ? PUBLIC_API : "/api/local";
   const q = encodeURIComponent(state.q);
   let url;
   if (state.source === "public") {
-    if (state.q) url = `${base}/products/search?q=${q}&limit=${limit}`;
-    else if (state.category) url = `${base}/products/category/${encodeURIComponent(state.category)}?limit=${limit}`;
-    else url = `${base}/products?limit=${limit}`;
+    // limit=0 asks DummyJSON for every matching product; we paginate on the page.
+    if (state.q) url = `${base}/products/search?q=${q}&limit=0`;
+    else if (state.category) url = `${base}/products/category/${encodeURIComponent(state.category)}?limit=0`;
+    else url = `${base}/products?limit=0`;
   } else {
-    const params = new URLSearchParams({ limit });
+    const params = new URLSearchParams();
     if (state.q) params.set("q", state.q);
     if (state.category) params.set("category", state.category);
-    url = `${base}/products?${params}`;
+    url = `${base}/products` + (params.toString() ? "?" + params : "");
   }
 
   loader.classList.remove("hidden");
   cardGrid.replaceChildren();
+  $("pager").replaceChildren();
   resultInfo.textContent = "";
   resultTitle.textContent = state.q ? `Results for "${state.q}"` : state.category ? state.category.replace(/-/g, " ") : "All products";
   try {
     const data = await request(url);
     if (!data || !Array.isArray(data.products)) throw new Error("Unexpected response format from the API.");
-    let list = data.products.map(p => normalize(p, state.source)).filter(p => !HIDDEN_CATEGORIES.has(p.category));
-    if (sortSelect.value === "low") list.sort((a, b) => a.price - b.price);
-    if (sortSelect.value === "high") list.sort((a, b) => b.price - a.price);
-    renderCards(list);
-    resultInfo.textContent = state.source === "public" ? `Showing ${list.length} products` : `Showing ${list.length} of ${data.total} products`;
+    currentList = data.products.map(p => normalize(p, state.source)).filter(p => !HIDDEN_CATEGORIES.has(p.category));
+    showPage(1);
   } catch (err) {
+    currentList = [];
     showMessage("Could not load products: " + err.message, "error");
   } finally {
     loader.classList.add("hidden");
@@ -470,8 +504,8 @@ document.querySelectorAll('input[name="source"]').forEach(r => r.addEventListene
   loadProducts();
 }));
 
-sortSelect.addEventListener("change", loadProducts);
-limitSelect.addEventListener("change", loadProducts);
+sortSelect.addEventListener("change", () => showPage(1));
+limitSelect.addEventListener("change", () => showPage(1));
 $("detailClose").addEventListener("click", () => detail.close());
 detail.addEventListener("click", e => { if (e.target === detail) detail.close(); });
 $("localBtn").addEventListener("click", loadLocal);
