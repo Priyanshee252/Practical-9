@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QuickShop | REST API Integration</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="bar">
+    <div class="bar-row">
+      <a class="brand" href="#" id="brand">Quick<span>Shop</span></a>
+      <form class="search" id="searchForm" role="search">
+        <input type="search" id="searchInput" placeholder="Search for phones, headphones, shoes..." maxlength="50" aria-label="Search products">
+        <button type="submit">Search</button>
+      </form>
+      <nav class="nav" aria-label="Sections">
+        <button type="button" class="navbtn active" data-view="shopView">Shop</button>
+        <button type="button" class="navbtn" data-view="addView">Add product</button>
+        <button type="button" class="navbtn" data-view="testView">Tests</button>
+        <button type="button" class="navbtn" data-view="docsView">API docs</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page">
+    <!-- SHOP -->
+    <section id="shopView" class="view shop">
+      <aside class="side">
+        <h2>Data source</h2>
+        <label class="opt"><input type="radio" name="source" value="local" checked> <span>QuickShop catalog<small>Our Express API, prices in rupees</small></span></label>
+        <label class="opt"><input type="radio" name="source" value="public"> <span>DummyJSON public API<small>Converted at ₹85 per $1 (approx.)</small></span></label>
+        <h2>Categories</h2>
+        <div id="categoryList" class="cats"></div>
+      </aside>
+
+      <div class="results">
+        <div class="results-head">
+          <div>
+            <h1 id="resultTitle">All products</h1>
+            <p id="resultInfo" class="info" aria-live="polite"></p>
+          </div>
+          <div class="sorts">
+            <label for="sortSelect">Sort</label>
+            <select id="sortSelect">
+              <option value="">Featured</option>
+              <option value="low">Price: low to high</option>
+              <option value="high">Price: high to low</option>
+            </select>
+            <label for="limitSelect">Show</label>
+            <select id="limitSelect">
+              <option value="12">12</option>
+              <option value="24" selected>24</option>
+              <option value="48">48</option>
+            </select>
+          </div>
+        </div>
+        <div id="loader" class="loader hidden">Loading products...</div>
+        <div id="cardGrid" class="cards"></div>
+      </div>
+    </section>
+
+    <!-- ADD -->
+    <section id="addView" class="view hidden">
+      <div class="add">
+        <form id="postForm" class="box" novalidate>
+          <h1>Add a product <span class="verb post">POST</span></h1>
+          <p class="hint">The form is sent to the server as JSON.</p>
+          <label for="title">Product name</label>
+          <input type="text" id="title" maxlength="100" placeholder="e.g. Bluetooth speaker">
+          <div class="two">
+            <div><label for="category">Category</label><input type="text" id="category" maxlength="50" placeholder="e.g. audio"></div>
+            <div><label for="price">Price (₹)</label><input type="number" id="price" min="0" step="0.01" placeholder="0"></div>
+          </div>
+          <label for="stock">Stock</label>
+          <input type="number" id="stock" min="0" step="1" placeholder="0">
+          <label for="description">Description</label>
+          <textarea id="description" rows="3" maxlength="300" placeholder="Short description"></textarea>
+          <fieldset>
+            <legend>Send to</legend>
+            <label class="radio"><input type="radio" name="target" value="local" checked> QuickShop server (kept until restart)</label>
+            <label class="radio"><input type="radio" name="target" value="public"> DummyJSON (simulated, not stored)</label>
+          </fieldset>
+          <button type="submit" id="submitBtn" class="primary">Send product</button>
+        </form>
+
+        <div class="box">
+          <h1>Catalog <span class="verb get">GET</span></h1>
+          <div class="row">
+            <input type="search" id="localSearch" placeholder="Filter by name" maxlength="50" aria-label="Filter catalog">
+            <button type="button" id="localBtn" class="ghost">Refresh</button>
+          </div>
+          <div class="tbl-wrap tall">
+            <table>
+              <thead><tr><th>ID</th><th>Name</th><th>Category</th><th class="num">Price</th><th class="num">Stock</th></tr></thead>
+              <tbody id="localTable"></tbody>
+            </table>
+          </div>
+          <p class="hint">Select a row to fetch that product by ID.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TESTS -->
+    <section id="testView" class="view hidden">
+      <div class="box">
+        <div class="row between">
+          <div>
+            <h1>Endpoint tests</h1>
+            <p class="hint">Runs every endpoint, including failure cases, and checks that the data sent matches the data returned.</p>
+          </div>
+          <button type="button" id="runTests" class="primary">Run all tests</button>
+        </div>
+        <p id="testSummary" class="info" aria-live="polite"></p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Result</th><th>Test</th><th>Request</th><th>Status</th><th>Detail</th></tr></thead>
+            <tbody id="testTable"><tr><td colspan="5" class="empty">No tests run yet.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- DOCS -->
+    <section id="docsView" class="view hidden">
+      <div class="box">
+        <h1>API documentation</h1>
+        <p class="hint">Every endpoint this app calls, with its method and JSON structure.</p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Method</th><th>Endpoint</th><th>Purpose</th><th>Request JSON</th><th>Response JSON</th></tr></thead>
+            <tbody id="docsTable"></tbody>
+          </table>
+        </div>
+        <div class="docs-grid">
+          <div><h2>Product (QuickShop)</h2>
+<pre class="code">{ "id": 4, "title": "boAt Airdopes 141",
+  "category": "audio", "price": 1299,
+  "stock": 120, "description": "..." }</pre></div>
+          <div><h2>Product (DummyJSON)</h2>
+<pre class="code">{ "id": 1, "title": "...", "category": "beauty",
+  "price": 9.99, "rating": 4.9, "stock": 5,
+  "brand": "...", "thumbnail": "https://..." }</pre></div>
+          <div><h2>Errors (QuickShop)</h2>
+<pre class="code">400 { "message": "Title must be 2-100 characters." }
+404 { "message": "Product not found." }</pre></div>
+          <div><h2>Error handling in the app</h2>
+            <ul class="plain">
+              <li>Network failure, 10 second timeout, non-2xx status, invalid JSON and unexpected response shapes show a red message.</li>
+              <li>Successful requests show a green message.</li>
+            </ul></div>
+        </div>
+      </div>
+    </section>
+
+    <details class="box inspector">
+      <summary>Last API exchange <span id="inspectorMeta" class="meta">No request sent yet</span></summary>
+      <pre id="inspectorBody" class="code"></pre>
+    </details>
+  </main>
+
+  <dialog id="detail">
+    <div id="detailBody"></div>
+    <button type="button" id="detailClose" class="ghost">Close</button>
+  </dialog>
+  <div id="toast" class="toast hidden" role="status"></div>
+</body>
+</html>

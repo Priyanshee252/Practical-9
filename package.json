@@ -1,0 +1,8 @@
+{
+  "name": "quickshop-rest-integration",
+  "version": "1.0.0",
+  "description": "QuickShop: REST API integration and JSON data exchange",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "express": "^4.19.2" }
+}
