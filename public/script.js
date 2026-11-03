@@ -8,6 +8,9 @@ const searchInput = $("searchInput"), limitSelect = $("limitSelect"), sortSelect
 const categoryList = $("categoryList"), localTable = $("localTable"), postForm = $("postForm");
 const detail = $("detail"), detailBody = $("detailBody");
 
+// DummyJSON categories we never show (they include meat, fish and eggs).
+const HIDDEN_CATEGORIES = new Set(["groceries"]);
+
 const state = { source: "local", category: "", q: "" };
 
 const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -208,6 +211,7 @@ async function loadCategories() {
     categoryList.append(buildCategoryButton("", "All products"));
     list.forEach(item => {
       const slug = typeof item === "string" ? item : item.slug;
+      if (HIDDEN_CATEGORIES.has(slug)) return;
       const name = typeof item === "string" ? item : item.name;
       categoryList.append(buildCategoryButton(slug, name, item.count));
     });
@@ -239,11 +243,11 @@ async function loadProducts() {
   try {
     const data = await request(url);
     if (!data || !Array.isArray(data.products)) throw new Error("Unexpected response format from the API.");
-    let list = data.products.map(p => normalize(p, state.source));
+    let list = data.products.map(p => normalize(p, state.source)).filter(p => !HIDDEN_CATEGORIES.has(p.category));
     if (sortSelect.value === "low") list.sort((a, b) => a.price - b.price);
     if (sortSelect.value === "high") list.sort((a, b) => b.price - a.price);
     renderCards(list);
-    resultInfo.textContent = `Showing ${list.length} of ${data.total} products`;
+    resultInfo.textContent = state.source === "public" ? `Showing ${list.length} products` : `Showing ${list.length} of ${data.total} products`;
   } catch (err) {
     showMessage("Could not load products: " + err.message, "error");
   } finally {
